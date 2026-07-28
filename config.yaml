@@ -1,0 +1,4 @@
+# TestProof settings
+# Point the tool at ANY project by changing these two lines.
+app_file: cart.py
+test_file: test_cart.py
