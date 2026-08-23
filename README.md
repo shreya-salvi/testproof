@@ -10,7 +10,7 @@ trusted. **TestProof is the inspector that catches fake tests.**
 > Everyone is building AI that *writes* tests. TestProof proves those tests
 > can be *trusted*.
 
-**Live demo:** _()_
+**Live demo:** _(https://testproof.streamlit.app/)_
 
 ,-
 
