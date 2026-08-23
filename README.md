@@ -12,7 +12,7 @@ trusted. **TestProof is the inspector that catches fake tests.**
 
 **Live demo:** _(add your Streamlit URL here once deployed)_
 
----
+,-
 
 ## See it work
 
@@ -33,7 +33,7 @@ TestProof inspects a test suite and produces a trust scorecard:
   FAKE     test_price_runs
            -> Layer 1: no assert - checks nothing
 
--------------------------------------------------------
+,,,,,,,,,,,,,,,,,,,,,,,,,,,-
   Trust score: 1 of 3 tests trustworthy (33%)
 =======================================================
 ```
@@ -41,7 +41,7 @@ TestProof inspects a test suite and produces a trust scorecard:
 All three tests pass in a normal `pytest` run. TestProof proves that only
 **one** of them actually protects you.
 
----
+,-
 
 ## How it works — a tiered funnel
 
@@ -53,16 +53,16 @@ spends API calls on tests that already look trustworthy.
    Test suite (all green, looks fine)
             |
             v
-   Layer 1: READ the tests (cheap, no run)   -->  catches tests with no real check
+   Layer 1: READ the tests (cheap, no run)   ,>  catches tests with no real check
             |
             v
-   Layer 2: BREAK the app (mutation testing)  -->  catches tests that don't notice bugs
+   Layer 2: BREAK the app (mutation testing)  ,>  catches tests that don't notice bugs
             |
             v
-   Layer 3: AI REVIEW (survivors only)        -->  flags weak assertions the others miss
+   Layer 3: AI REVIEW (survivors only)        ,>  flags weak assertions the others miss
             |
             v
-   Report  -->  one trust scorecard + score
+   Report  ,>  one trust scorecard + score
 ```
 
 **Layer 1 — Static Scanner:** reads each test *without running it* and flags
@@ -79,19 +79,19 @@ expected value) or *weak* (only checks a type, or that the result isn't null).
 Includes retry-with-backoff so temporary rate limits don't crash a run, and
 degrades gracefully to a two-layer report if no API key is set.
 
----
+,-
 
 ## Three verdicts
 
 | Verdict   | Meaning                                                        |
-|-----------|---------------------------------------------------------------|
+|,,,,,-|,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,-|
 | `TRUSTED` | Passed every layer that ran.                                  |
 | `FAKE`    | Failed a hard, deterministic check (Layer 1 or Layer 2).      |
 | `WEAK`    | Survived L1 & L2, but the AI reviewer flagged a soft concern. |
 
 Only `TRUSTED` tests count toward the trust score.
 
----
+,-
 
 ## Why this matters
 
@@ -101,7 +101,7 @@ treat a poor mutation score as a signal to fix tests before shipping. As AI
 tools now generate more and more tests, the question "can these tests be
 trusted?" is only getting bigger — which is exactly the gap TestProof targets.
 
----
+,-
 
 ## Works on any project (config-driven)
 
@@ -116,7 +116,7 @@ test_file: test_pricing.py
 Change those two lines and run again — the same tool inspects a completely
 different project.
 
----
+,-
 
 ## Run it
 
@@ -153,7 +153,7 @@ pip install streamlit
 streamlit run app.py
 ```
 
----
+,-
 
 ## Project structure
 
@@ -169,7 +169,7 @@ testproof/
    test_pricing.py      tests for the example
 ```
 
----
+,-
 
 ## Tech
 
