@@ -1,4 +1,7 @@
-# TestProof settings
-# Point the tool at ANY project by changing these two lines.
-app_file: cart.py
-test_file: test_cart.py
+[theme]
+base = "dark"
+primaryColor = "#5EC8FF"
+backgroundColor = "#0B1020"
+secondaryBackgroundColor = "#121834"
+textColor = "#EAF0FF"
+font = "sans serif"

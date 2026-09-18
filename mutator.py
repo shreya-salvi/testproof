@@ -1,92 +1,78 @@
-# mutator.py
-# LAYER 2 of TestProof: the Mutation Agent.
-# Secretly breaks the app, re-runs tests, sees who notices.
-#   - real test FAILS  -> caught the bug  -> OK
-#   - fake test PASSES -> missed the bug  -> FAKE
+"""Layer 2 — mutation agent, in-process (fast, no subprocesses).
+
+Breaks the app in memory and re-runs each test by calling it directly. A test
+that stays green while the code is broken never really checked anything.
+"""
 
 import ast
-import shutil
-import subprocess
 import sys
+import types
+
+_MUT = [(" + ", " - "), (" - ", " + "), (" * ", " / "),
+        (" / ", " * "), (" ** ", " * ")]
 
 
-def make_mutant(source):
-    """Swap the first '+' operator for '-' to create a broken version."""
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-            node.op = ast.Sub()
-            break
-    return ast.unparse(tree)
+def make_mutants(src):
+    outs = []
+    for old, new in _MUT:
+        i = src.find(old)
+        while i != -1:
+            cand = src[:i] + new + src[i + len(old):]
+            if cand != src:
+                try:
+                    compile(cand, "<m>", "exec")
+                    outs.append(cand)
+                except SyntaxError:
+                    pass
+            i = src.find(old, i + 1)
+    seen, res = set(), []
+    for m in outs:
+        if m not in seen:
+            seen.add(m)
+            res.append(m)
+    return res
 
 
-def list_tests(source):
-    """Find every function named test_*"""
-    tree = ast.parse(source)
-    return [
-        node.name for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef) and node.name.startswith("test")
-    ]
+def run_test_inproc(app_src, module_name, test_src, test_name):
+    """Return True if the named test passes when run against app_src.
 
-
-def run_one_test(test_file, test_name):
-    """Run a single test. Return True if PASSED, False if FAILED."""
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", f"{test_file}::{test_name}", "-q"],
-        capture_output=True, text=True
-    )
-    return result.returncode == 0
+    We register a throwaway module (e.g. 'calculator') built from app_src, then
+    exec the test file and call the one test function. No files, no subprocess.
+    """
+    saved = sys.modules.get(module_name)
+    try:
+        mod = types.ModuleType(module_name)
+        exec(compile(app_src, f"<{module_name}>", "exec"), mod.__dict__)
+        sys.modules[module_name] = mod
+        g = {}
+        exec(compile(test_src, "<test>", "exec"), g)
+        fn = g.get(test_name)
+        if fn is None:
+            return False
+        fn()
+        return True
+    except Exception:
+        return False
+    finally:
+        if saved is not None:
+            sys.modules[module_name] = saved
+        else:
+            sys.modules.pop(module_name, None)
 
 
 def run_mutation_check(app_file, test_file):
-    """Break the app, run each test, restore the app. Returns {name: (verdict, reason)}."""
-    with open(app_file) as f:
-        original_app = f.read()
-    with open(test_file) as f:
-        test_source = f.read()
-
-    tests = list_tests(test_source)
-    results = {}
-    backup = app_file + ".backup"
-
-    shutil.copy(app_file, backup)
-    mutant = make_mutant(original_app)
-    with open(app_file, "w") as f:
-        f.write(mutant)
-
-    try:
-        for name in tests:
-            passed = run_one_test(test_file, name)
-            if passed:
-                results[name] = ("FAKE", "stayed green while app was broken")
-            else:
-                results[name] = ("OK", "caught the bug (failed as it should)")
-    finally:
-        shutil.move(backup, app_file)
-
-    return results
-
-
-def main():
-    # when run directly, read settings from config.yaml
-    import yaml
-    with open("config.yaml") as f:
-        cfg = yaml.safe_load(f)
-
-    print("\n=== TestProof - Layer 2: Mutation Agent ===")
-    print("Secretly breaking the app (changing +  to  -)...\n")
-
-    results = run_mutation_check(cfg["app_file"], cfg["test_file"])
-
-    fake_count = 0
-    for name, (verdict, reason) in results.items():
-        mark = "OK  " if verdict == "OK" else "FAKE"
-        print(f"  [{mark}] {name}  ->  {reason}")
-        if verdict == "FAKE":
-            fake_count += 1
-
-    print(f"\n  {len(results)} tests checked. {fake_count} exposed as fake by mutation.\n")
-
-
-if __name__ == "__main__":
-    main()
+    import os
+    app_src = open(app_file, encoding="utf-8").read()
+    test_src = open(test_file, encoding="utf-8").read()
+    module = os.path.splitext(os.path.basename(app_file))[0]
+    names = [n.name for n in ast.walk(ast.parse(test_src))
+             if isinstance(n, ast.FunctionDef) and n.name.startswith("test")]
+    muts = make_mutants(app_src)
+    result = {}
+    for name in names:
+        if not run_test_inproc(app_src, module, test_src, name):
+            result[name] = ("OK", "")          # doesn't pass clean; others judge
+            continue
+        killed = any(not run_test_inproc(m, module, test_src, name) for m in muts)
+        result[name] = ("OK", "") if killed else ("FAKE", "stayed green while the app was broken")
+    return result

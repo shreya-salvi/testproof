@@ -1,30 +1,28 @@
-# test_calculator.py
-# Three tests for the calculator.
-# They will ALL show green when we run them.
-# But only ONE of them is actually a real test. Watch.
-
-from calculator import add
+import pytest
+from calculator import calculate
 
 
-# ---- TEST 1: a REAL test ----
-# It checks the actual answer: 2 + 2 must be 4.
-def test_add_good():
-    result = add(2, 2)
-    assert result == 4
+def test_add_is_correct():
+    # STRONG: exact value
+    assert calculate(2, "+", 3) == 5
 
 
-# ---- TEST 2: a LAZY FAKE ----
-# It runs the code... but never checks the answer.
-# No "assert" at all. It checks nothing. (Guard with eyes closed.)
-def test_add_lazy():
-    result = add(2, 2)
-    # (no assert here - this test can never fail)
+def test_power_is_correct():
+    # STRONG: a more complex operation
+    assert calculate(2, "^", 10) == 1024
 
 
-# ---- TEST 3: a SNEAKY FAKE ----
-# It HAS an assert, so it looks real...
-# but it only checks "is the result a number?" - not that it's 4.
-# If the calculator broke and returned 5, this test would still pass.
-def test_add_sneaky():
-    result = add(2, 2)
-    assert isinstance(result, int)
+def test_divide_by_zero_raises():
+    # STRONG: checks the error path is handled
+    with pytest.raises(ZeroDivisionError):
+        calculate(5, "/", 0)
+
+
+def test_multiply_smoke():
+    # WEAK: only checks the type, not the value
+    assert isinstance(calculate(4, "*", 5), (int, float))
+
+
+def test_subtract_runs():
+    # FAKE: no assertion at all
+    calculate(10, "-", 4)

@@ -1,0 +1,34 @@
+# TestProof quality gate — runs on every push / pull request.
+# Fails the build if the test suite's trust score drops below the bar,
+# so fake tests can't get merged. Uses Layers 1 & 2 (no API key needed).
+
+name: TestProof quality gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  trust-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pytest pyyaml
+
+      - name: Run the TestProof trust gate
+        env:
+          # Minimum trust score (percent) required to pass the build.
+          # The bundled calculator example scores 50%; raise this to enforce
+          # a stricter bar on a real project.
+          TESTPROOF_MIN_TRUST: "50"
+        run: python ci_gate.py
