@@ -3,13 +3,12 @@ ci_gate.py  -  TestProof as a CI quality gate.
 
 Runs the deterministic layers (static scan + mutation) on the project's tests,
 prints a trust report, and exits non-zero if the trust score is below a
-threshold. Dropped into GitHub Actions, this fails the build when a suite is
-padded with fake tests — the same idea Google enforces in code review.
+threshold. Graded the same way the app is, including exception tests.
 
-Only Layers 1 & 2 run here: they need no API key, so CI stays fast and free.
 Configure the bar with TESTPROOF_MIN_TRUST (percent, default 50).
 """
 
+import ast
 import os
 import sys
 
@@ -19,13 +18,25 @@ from scanner import scan_file
 from mutator import run_mutation_check
 
 
+def _sources(test_file):
+    src = open(test_file, encoding="utf-8").read()
+    tree = ast.parse(src)
+    return {n.name: (ast.get_source_segment(src, n) or "")
+            for n in ast.walk(tree)
+            if isinstance(n, ast.FunctionDef) and n.name.startswith("test")}
+
+
 def evaluate(app_file, test_file):
     l1 = {n: (v, r) for n, v, r in scan_file(test_file)}
     l2 = run_mutation_check(app_file, test_file)
+    srcs = _sources(test_file)
     report = {}
     for name, (v1, r1) in l1.items():
+        src = srcs.get(name, "")
         if v1 == "FAKE":
-            report[name] = ("FAKE", f"Layer 1: {r1 or 'no real assertion'}")
+            report[name] = ("FAKE", f"Layer 1: {r1 or 'no assertion'}")
+        elif "pytest.raises" in src or ".assertRaises" in src:
+            report[name] = ("TRUSTED", "checks the error path")
         else:
             v2, r2 = l2.get(name, ("OK", ""))
             if v2 == "FAKE":

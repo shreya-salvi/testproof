@@ -1,7 +1,3 @@
-[theme]
-base = "dark"
-primaryColor = "#5EC8FF"
-backgroundColor = "#0B1020"
-secondaryBackgroundColor = "#121834"
-textColor = "#EAF0FF"
-font = "sans serif"
+# TestProof settings — which app + tests the CLI/CI inspects.
+app_file: calculator.py
+test_file: test_calculator.py
